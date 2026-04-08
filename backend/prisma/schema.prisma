@@ -1,0 +1,12 @@
+// Schema inicial do HelpDesk Operacional.
+// As entidades de domínio (Ticket, Location, Category) serão adicionadas
+// pelo Pedro na issue correspondente do Sprint 1.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
