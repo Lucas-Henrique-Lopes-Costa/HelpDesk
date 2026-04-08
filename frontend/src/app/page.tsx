@@ -1,15 +1,21 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
+
 export default function Home() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+    router.replace(user ? "/dashboard" : "/login");
+  }, [user, loading, router]);
+
   return (
-    <main className="flex min-h-screen items-center justify-center p-8">
-      <div className="text-center">
-        <h1 className="text-2xl font-semibold text-slate-900">
-          HelpDesk Operacional
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Inicializando frontend... acesse <code>/login</code> ou{" "}
-          <code>/dashboard</code>.
-        </p>
-      </div>
-    </main>
+    <div className="flex min-h-[60vh] items-center justify-center text-sm text-slate-500">
+      Carregando…
+    </div>
   );
 }
