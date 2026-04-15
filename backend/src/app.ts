@@ -3,6 +3,8 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import { healthRouter } from "./routes/health.routes";
+import { authRouter } from "./routes/auth.routes";
+import { errorHandler } from "./middleware/error-handler";
 
 export function createApp(): Application {
   const app = express();
@@ -13,8 +15,10 @@ export function createApp(): Application {
   app.use(morgan(process.env.NODE_ENV === "test" ? "tiny" : "dev"));
 
   app.use("/health", healthRouter);
+  app.use("/auth", authRouter);
 
   app.use((_req, res) => res.status(404).json({ error: "Not Found" }));
+  app.use(errorHandler);
 
   return app;
 }
