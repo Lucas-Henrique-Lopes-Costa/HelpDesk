@@ -18,4 +18,5 @@ module.exports = {
   coverageReporters: ["text", "lcov", "html"],
   clearMocks: true,
   verbose: true,
+  setupFiles: ["<rootDir>/tests/setup.ts"],
 };
