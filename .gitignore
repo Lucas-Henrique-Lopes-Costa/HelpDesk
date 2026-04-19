@@ -48,3 +48,6 @@ minio-data/
 # Testing
 .nyc_output/
 junit.xml
+
+# Material da disciplina
+atividade/
