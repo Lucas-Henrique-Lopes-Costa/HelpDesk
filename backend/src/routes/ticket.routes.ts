@@ -1,6 +1,8 @@
 import { Router } from "express";
+import { UserRole } from "@prisma/client";
 import { validateBody } from "../middleware/validate";
 import { authenticate } from "../middleware/authenticate";
+import { authorize } from "../middleware/authorize";
 import {
   createTicketController,
   createTicketSchema,
@@ -13,17 +15,24 @@ const ticketController = createTicketController(ticketService);
 
 export const ticketRouter = Router();
 
-// POST - Criar ticket (autenticado)
-ticketRouter.post("/", authenticate, validateBody(createTicketSchema), (req, res, next) =>
-  ticketController.create(req, res, next),
+// POST - Criar ticket (solicitantes, gestores e admin)
+ticketRouter.post(
+  "/",
+  authenticate,
+  authorize(UserRole.REQUESTER, UserRole.MANAGER, UserRole.ADMIN),
+  validateBody(createTicketSchema),
+  (req, res, next) => ticketController.create(req, res, next),
 );
 
-// GET - Listar tickets (autenticado, com filtros)
-ticketRouter.get("/", authenticate, (req, res, next) =>
-  ticketController.list(req, res, next),
+// GET - Listar tickets (apenas operacional, gestores e admin enxergam o backlog)
+ticketRouter.get(
+  "/",
+  authenticate,
+  authorize(UserRole.MANAGER, UserRole.ADMIN, UserRole.OPERATOR),
+  (req, res, next) => ticketController.list(req, res, next),
 );
 
-// GET - Detalhar ticket específico (autenticado)
+// GET - Detalhar ticket específico (qualquer usuário autenticado; ownership do REQUESTER será aplicada no Sprint 2)
 ticketRouter.get("/:id", authenticate, (req, res, next) =>
   ticketController.getById(req, res, next),
 );
