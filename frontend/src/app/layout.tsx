@@ -16,7 +16,9 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <Topbar />
-          <main className="mx-auto max-w-6xl px-4 py-6">{children}</main>
+          <main className="mx-auto max-w-6xl px-3 py-5 sm:px-4 sm:py-6">
+            {children}
+          </main>
         </AuthProvider>
       </body>
     </html>

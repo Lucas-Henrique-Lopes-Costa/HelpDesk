@@ -191,11 +191,21 @@ export default function DashboardPage() {
 
             {!loading && !error && tickets.length === 0 && (
               <tr>
-                <td
-                  colSpan={7}
-                  className="px-3 py-10 text-center text-sm text-slate-500"
-                >
-                  Nenhum chamado encontrado para os filtros atuais.
+                <td colSpan={7} className="px-3 py-12 text-center">
+                  <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
+                    <p className="text-sm font-medium text-slate-700">
+                      Nenhum chamado encontrado
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Ajuste os filtros ou abra um novo chamado para começar.
+                    </p>
+                    <Link
+                      href="/tickets/new"
+                      className="mt-2 inline-flex items-center rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+                    >
+                      + Novo chamado
+                    </Link>
+                  </div>
                 </td>
               </tr>
             )}
