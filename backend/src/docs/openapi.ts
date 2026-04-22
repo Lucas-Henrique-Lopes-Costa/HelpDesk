@@ -18,6 +18,7 @@ export const openApiSpec = {
   tags: [
     { name: "Health", description: "Status do serviço" },
     { name: "Auth", description: "Cadastro e autenticação via JWT" },
+    { name: "Tickets", description: "Gestão de chamados [US-02]" },
   ],
   components: {
     securitySchemes: {
@@ -108,6 +109,74 @@ export const openApiSpec = {
           service: { type: "string", example: "helpdesk-backend" },
           timestamp: { type: "string", format: "date-time" },
         },
+      },
+      TicketStatus: {
+        type: "string",
+        enum: ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELED"],
+        description: "Status do ticket (default: OPEN).",
+      },
+      TicketPriority: {
+        type: "string",
+        enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"],
+        description: "Prioridade do ticket (default: MEDIUM).",
+      },
+      Location: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string", example: "Sala 101" },
+          building: { type: "string", example: "Prédio A" },
+          floor: { type: "string", example: "1º andar" },
+        },
+        required: ["id", "name", "building", "floor"],
+      },
+      Category: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string", example: "Manutenção" },
+          slaHours: { type: "number", example: 24 },
+        },
+        required: ["id", "name", "slaHours"],
+      },
+      Ticket: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          title: { type: "string", example: "Ar condicionado não está funcionando" },
+          description: { type: "string", example: "Ar-condicionado da sala 101 está com problema" },
+          status: { $ref: "#/components/schemas/TicketStatus" },
+          priority: { $ref: "#/components/schemas/TicketPriority" },
+          reporterId: { type: "string", format: "uuid" },
+          assigneeId: { type: "string", format: "uuid", nullable: true },
+          categoryId: { type: "string", format: "uuid" },
+          locationId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+        required: ["id", "title", "status", "priority", "reporterId", "categoryId", "locationId", "createdAt", "updatedAt"],
+      },
+      CreateTicketInput: {
+        type: "object",
+        properties: {
+          title: { type: "string", minLength: 1, maxLength: 100, example: "Ar condicionado quebrado" },
+          description: { type: "string", maxLength: 500, example: "O ar-condicionado da sala 101 parou de funcionar" },
+          locationId: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440000" },
+          categoryId: { type: "string", format: "uuid", example: "550e8400-e29b-41d4-a716-446655440001" },
+          priority: { $ref: "#/components/schemas/TicketPriority" },
+        },
+        required: ["title", "locationId", "categoryId"],
+      },
+      TicketListResponse: {
+        type: "object",
+        properties: {
+          data: { type: "array", items: { $ref: "#/components/schemas/Ticket" } },
+          total: { type: "number" },
+          page: { type: "number" },
+          pageSize: { type: "number" },
+          totalPages: { type: "number" },
+        },
+        required: ["data", "total", "page", "pageSize", "totalPages"],
       },
     },
   },
@@ -231,6 +300,135 @@ export const openApiSpec = {
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/tickets": {
+      post: {
+        tags: ["Tickets"],
+        summary: "Criar novo ticket",
+        description: "Cria um novo ticket de chamado. O reporter é extraído do JWT token.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CreateTicketInput" },
+              example: {
+                title: "Ar condicionado não funciona",
+                description: "AC da sala 101 parou de funcionar",
+                locationId: "550e8400-e29b-41d4-a716-446655440000",
+                categoryId: "550e8400-e29b-41d4-a716-446655440001",
+                priority: "HIGH",
+              },
+            },
+          },
+        },
+        responses: {
+          201: {
+            description: "Ticket criado com sucesso",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Ticket" },
+              },
+            },
+          },
+          401: {
+            description: "Token inválido ou ausente",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          404: {
+            description: "Localização ou categoria não encontrada",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "NOT_FOUND", message: "Localização não encontrada" },
+              },
+            },
+          },
+          422: {
+            description: "Dados inválidos",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+      get: {
+        tags: ["Tickets"],
+        summary: "Listar tickets com filtros",
+        description: "Retorna lista paginada de tickets. Todos os filtros são opcionais.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "status", in: "query", schema: { type: "string", enum: ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELED"] }, description: "Filtrar por status" },
+          { name: "priority", in: "query", schema: { type: "string", enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"] }, description: "Filtrar por prioridade" },
+          { name: "categoryId", in: "query", schema: { type: "string", format: "uuid" }, description: "Filtrar por categoria" },
+          { name: "locationId", in: "query", schema: { type: "string", format: "uuid" }, description: "Filtrar por localização" },
+          { name: "assigneeId", in: "query", schema: { type: "string", format: "uuid" }, description: "Filtrar por responsável" },
+          { name: "page", in: "query", schema: { type: "number", default: 1 }, description: "Número da página (padrão: 1)" },
+          { name: "pageSize", in: "query", schema: { type: "number", default: 20, maximum: 100 }, description: "Tamanho da página (padrão: 20, máximo: 100)" },
+        ],
+        responses: {
+          200: {
+            description: "Lista de tickets",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/TicketListResponse" },
+              },
+            },
+          },
+          401: {
+            description: "Token inválido ou ausente",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/tickets/{id}": {
+      get: {
+        tags: ["Tickets"],
+        summary: "Obter ticket por ID",
+        description: "Retorna detalhes de um ticket específico.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" }, description: "ID do ticket" },
+        ],
+        responses: {
+          200: {
+            description: "Ticket encontrado",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Ticket" },
+              },
+            },
+          },
+          401: {
+            description: "Token inválido ou ausente",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          404: {
+            description: "Ticket não encontrado",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "NOT_FOUND", message: "Ticket não encontrado" },
               },
             },
           },
