@@ -11,6 +11,27 @@ export type CreateTicketInput = {
 
 export type CreateTicketResponse = Ticket;
 
+export type ListTicketsFilters = {
+  status?: TicketStatus;
+  priority?: TicketPriority;
+  categoryId?: string;
+  locationId?: string;
+  assigneeId?: string;
+};
+
+export type ListTicketsOptions = {
+  page?: number;
+  pageSize?: number;
+};
+
+export type TicketListResponse = {
+  data: Ticket[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
 export type TicketService = ReturnType<typeof createTicketService>;
 
 export function createTicketService(prisma: PrismaClient) {
@@ -54,6 +75,83 @@ export function createTicketService(prisma: PrismaClient) {
           location: true,
         },
       });
+
+      return ticket;
+    },
+
+    async list(
+      filters: ListTicketsFilters = {},
+      options: ListTicketsOptions = {},
+    ): Promise<TicketListResponse> {
+      const page = options.page ?? 1;
+      const pageSize = options.pageSize ?? 20;
+      const skip = (page - 1) * pageSize;
+
+      // Construir filtros dinâmicos
+      const where: any = {};
+      if (filters.status) where.status = filters.status;
+      if (filters.priority) where.priority = filters.priority;
+      if (filters.categoryId) where.categoryId = filters.categoryId;
+      if (filters.locationId) where.locationId = filters.locationId;
+      if (filters.assigneeId) where.assigneeId = filters.assigneeId;
+
+      const [data, total] = await Promise.all([
+        prisma.ticket.findMany({
+          where,
+          skip,
+          take: pageSize,
+          include: {
+            reporter: {
+              select: { id: true, name: true, email: true },
+            },
+            assignee: {
+              select: { id: true, name: true, email: true },
+            },
+            category: {
+              select: { id: true, name: true, slaHours: true },
+            },
+            location: {
+              select: { id: true, name: true, building: true, floor: true },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.ticket.count({ where }),
+      ]);
+
+      const totalPages = Math.ceil(total / pageSize);
+
+      return {
+        data,
+        total,
+        page,
+        pageSize,
+        totalPages,
+      };
+    },
+
+    async getById(id: string): Promise<Ticket> {
+      const ticket = await prisma.ticket.findUnique({
+        where: { id },
+        include: {
+          reporter: {
+            select: { id: true, name: true, email: true },
+          },
+          assignee: {
+            select: { id: true, name: true, email: true },
+          },
+          category: {
+            select: { id: true, name: true, slaHours: true },
+          },
+          location: {
+            select: { id: true, name: true, building: true, floor: true },
+          },
+        },
+      });
+
+      if (!ticket) {
+        throw new NotFoundError("Ticket não encontrado");
+      }
 
       return ticket;
     },
