@@ -5,6 +5,7 @@ import morgan from "morgan";
 import swaggerUi from "swagger-ui-express";
 import { healthRouter } from "./routes/health.routes";
 import { authRouter } from "./routes/auth.routes";
+import { ticketRouter } from "./routes/ticket.routes";
 import { errorHandler } from "./middleware/error-handler";
 import { openApiSpec } from "./docs/openapi";
 
@@ -24,6 +25,7 @@ export function createApp(): Application {
 
   app.use("/health", healthRouter);
   app.use("/auth", authRouter);
+  app.use("/tickets", ticketRouter);
 
   app.get("/openapi.json", (_req, res) => res.json(openApiSpec));
   app.use(
