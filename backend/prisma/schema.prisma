@@ -18,15 +18,74 @@ enum UserRole {
   OPERATOR
 }
 
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  CANCELED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 model User {
-  id           String   @id @default(uuid())
-  name         String
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  role         UserRole @default(REQUESTER)
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid())
+  name              String
+  email             String   @unique
+  passwordHash      String   @map("password_hash")
+  role              UserRole @default(REQUESTER)
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  ticketsReported   Ticket[] @relation("reporter")
+  ticketsAssigned   Ticket[] @relation("assignee")
 
   @@map("users")
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  name      String
+  building  String
+  floor     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  tickets   Ticket[]
+
+  @@map("locations")
+}
+
+model Category {
+  id       String   @id @default(uuid())
+  name     String
+  slaHours Int
+  tickets  Ticket[]
+
+  @@map("categories")
+}
+
+model Ticket {
+  id         String         @id @default(uuid())
+  title      String
+  description String?
+  status     TicketStatus   @default(OPEN)
+  priority   TicketPriority @default(MEDIUM)
+  reporterId String         @map("reporter_id")
+  assigneeId String?        @map("assignee_id")
+  categoryId String         @map("category_id")
+  locationId String         @map("location_id")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+
+  reporter   User     @relation("reporter", fields: [reporterId], references: [id])
+  assignee   User?    @relation("assignee", fields: [assigneeId], references: [id])
+  category   Category @relation(fields: [categoryId], references: [id])
+  location   Location @relation(fields: [locationId], references: [id])
+
+  @@map("tickets")
 }
