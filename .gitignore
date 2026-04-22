@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+.yarn/
+pnpm-lock.yaml.bak
+
+# Build / dist
+dist/
+build/
+out/
+.next/
+coverage/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+!.vscode/settings.example.json
+
+# Prisma
+backend/prisma/*.db
+backend/prisma/migrations/**/migration_lock.toml.bak
+
+# Docker
+.docker/data/
+
+# MinIO / uploads
+uploads/
+minio-data/
+
+# Testing
+.nyc_output/
+junit.xml
+
+# Material da disciplina
+atividade/
