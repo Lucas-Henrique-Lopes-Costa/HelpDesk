@@ -1,5 +1,7 @@
 # HelpDesk Operacional
 
+![CI](https://github.com/Lucas-Henrique-Lopes-Costa/HelpDesk/actions/workflows/ci.yml/badge.svg?branch=main)
+
 Sistema de gestão de chamados e manutenção de facilities para grandes empresas. Conecta colaboradores (que reportam problemas físicos — manutenção, limpeza, reposição de insumos) à equipe operacional, com validação visual (fotos antes/depois) e controle rigoroso de SLA.
 
 > **Disciplina:** GCC267 - Projeto Integrador I (UFLA, 2026/1)
