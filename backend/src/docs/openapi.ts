@@ -344,6 +344,15 @@ export const openApiSpec = {
               },
             },
           },
+          403: {
+            description: "Usuário autenticado não tem permissão para abrir chamados",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "FORBIDDEN", message: "Acesso negado" },
+              },
+            },
+          },
           404: {
             description: "Localização ou categoria não encontrada",
             content: {
@@ -391,6 +400,15 @@ export const openApiSpec = {
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          403: {
+            description: "Usuário autenticado não tem permissão para listar o backlog",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                example: { error: "FORBIDDEN", message: "Acesso negado" },
               },
             },
           },
