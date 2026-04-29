@@ -1,5 +1,7 @@
 # HelpDesk Operacional
 
+![CI](https://github.com/Lucas-Henrique-Lopes-Costa/HelpDesk/actions/workflows/ci.yml/badge.svg?branch=main)
+
 Sistema de gestão de chamados e manutenção de facilities para grandes empresas. Conecta colaboradores (que reportam problemas físicos — manutenção, limpeza, reposição de insumos) à equipe operacional, com validação visual (fotos antes/depois) e controle rigoroso de SLA.
 
 > **Disciplina:** GCC267 - Projeto Integrador I (UFLA, 2026/1)
@@ -53,9 +55,28 @@ npm install
 npm run prisma:generate
 npm run prisma:migrate
 npm run dev  # sobe em http://localhost:3333
+
+# 4. Frontend (em outro terminal, na raiz do projeto)
+cd frontend
+cp .env.local.example .env.local
+npm install
+npm run dev  # sobe em http://localhost:3000
 ```
 
-Healthcheck: `curl http://localhost:3333/health`.
+Healthcheck do backend: `curl http://localhost:3333/health`.
+Documentação interativa (Swagger): <http://localhost:3333/docs>.
+Frontend: abra <http://localhost:3000>. As credenciais do seed são `admin@helpdesk.local` / `helpdesk123`.
+
+### Modo mock do frontend (sem backend)
+
+Para navegar pelas telas sem subir Postgres/backend, edite `frontend/.env.local`:
+
+```
+NEXT_PUBLIC_API_URL=http://localhost:3333
+NEXT_PUBLIC_USE_MOCK=true
+```
+
+Com o flag ligado, o dashboard usa 5 chamados mockados em memória e o formulário de novo chamado cria registros locais (somem ao recarregar). Útil para demo offline e desenvolvimento de UI.
 
 ## Scripts do backend
 
@@ -67,6 +88,15 @@ Healthcheck: `curl http://localhost:3333/health`.
 | `npm test` | Testes unitários (Jest) |
 | `npm run test:coverage` | Testes + relatório de cobertura |
 | `npm run prisma:migrate` | Aplica migrations no banco |
+
+## Scripts do frontend
+
+| Comando | Descrição |
+|---|---|
+| `npm run dev` | Next.js dev server em <http://localhost:3000> |
+| `npm run build` | Build de produção |
+| `npm run start` | Serve a build |
+| `npm run lint` | ESLint (`next lint`) |
 
 ## Documentação
 
