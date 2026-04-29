@@ -87,6 +87,8 @@ function makePrismaMock() {
           locationId: data.locationId,
           createdAt: new Date(),
           updatedAt: new Date(),
+          resolvedAt: data.resolvedAt ?? null,   
+          closedAt: data.closedAt ?? null,       
         };
         tickets.set(id, ticket);
 
