@@ -32,3 +32,9 @@ export class ForbiddenError extends AppError {
     super(message, 403, "FORBIDDEN");
   }
 }
+
+export class UnprocessableEntityError extends AppError {
+  constructor(message = "Erro ao processar dados") {
+    super(message, 422, "UNPROCESSABLE_ENTITY");
+  }
+}

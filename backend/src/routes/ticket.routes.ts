@@ -2,13 +2,16 @@ import { Router } from "express";
 import { UserRole } from "@prisma/client";
 import { validateBody } from "../middleware/validate";
 import { authenticate } from "../middleware/authenticate";
+import { requireRole } from "../middleware/require-role";
 import { authorize } from "../middleware/authorize";
 import {
   createTicketController,
   createTicketSchema,
+  updateStatusSchema,
 } from "../controllers/ticket.controller";
 import { createTicketService } from "../services/ticket.service";
 import { prisma } from "../config/prisma";
+import { UserRole } from "@prisma/client";
 
 const ticketService = createTicketService(prisma);
 const ticketController = createTicketController(ticketService);
@@ -35,4 +38,13 @@ ticketRouter.get(
 // GET - Detalhar ticket específico (qualquer usuário autenticado; ownership do REQUESTER será aplicada no Sprint 2)
 ticketRouter.get("/:id", authenticate, (req, res, next) =>
   ticketController.getById(req, res, next),
+);
+
+// PATCH - Atualizar status do ticket (autenticado como MANAGER ou OPERATOR)
+ticketRouter.patch(
+  "/:id/status",
+  authenticate,
+  requireRole(UserRole.MANAGER, UserRole.OPERATOR),
+  validateBody(updateStatusSchema),
+  (req, res, next) => ticketController.updateStatus(req, res, next),
 );

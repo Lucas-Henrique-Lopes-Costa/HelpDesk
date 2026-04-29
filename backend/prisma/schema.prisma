@@ -81,6 +81,8 @@ model Ticket {
   locationId String         @map("location_id")
   createdAt  DateTime       @default(now()) @map("created_at")
   updatedAt  DateTime       @updatedAt @map("updated_at")
+  resolvedAt DateTime?      @map("resolved_at")
+  closedAt   DateTime?      @map("closed_at")
 
   reporter   User     @relation("reporter", fields: [reporterId], references: [id])
   assignee   User?    @relation("assignee", fields: [assigneeId], references: [id])
