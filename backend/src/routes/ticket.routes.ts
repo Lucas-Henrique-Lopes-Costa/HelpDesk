@@ -11,7 +11,6 @@ import {
 } from "../controllers/ticket.controller";
 import { createTicketService } from "../services/ticket.service";
 import { prisma } from "../config/prisma";
-import { UserRole } from "@prisma/client";
 
 const ticketService = createTicketService(prisma);
 const ticketController = createTicketController(ticketService);
