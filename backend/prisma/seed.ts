@@ -23,30 +23,30 @@ async function main() {
   // Create Locations
   const locations = await Promise.all([
     prisma.location.upsert({
-      where: { id: "loc-001" },
+      where: { id: "11111111-1111-1111-1111-111111111111" },
       update: {},
       create: {
-        id: "loc-001",
+        id: "11111111-1111-1111-1111-111111111111",
         name: "Sala de Atendimento",
         building: "Prédio A",
         floor: "1º Andar",
       },
     }),
     prisma.location.upsert({
-      where: { id: "loc-002" },
+      where: { id: "22222222-2222-2222-2222-222222222222" },
       update: {},
       create: {
-        id: "loc-002",
+        id: "22222222-2222-2222-2222-222222222222",
         name: "Sala de TI",
         building: "Prédio B",
         floor: "2º Andar",
       },
     }),
     prisma.location.upsert({
-      where: { id: "loc-003" },
+      where: { id: "33333333-3333-3333-3333-333333333333" },
       update: {},
       create: {
-        id: "loc-003",
+        id: "33333333-3333-3333-3333-333333333333",
         name: "Almoxarifado",
         building: "Prédio C",
         floor: "Térreo",
@@ -60,28 +60,28 @@ async function main() {
   // Create Categories
   const categories = await Promise.all([
     prisma.category.upsert({
-      where: { id: "cat-001" },
+      where: { id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" },
       update: {},
       create: {
-        id: "cat-001",
+        id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         name: "Manutenção",
         slaHours: 24,
       },
     }),
     prisma.category.upsert({
-      where: { id: "cat-002" },
+      where: { id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" },
       update: {},
       create: {
-        id: "cat-002",
+        id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         name: "Limpeza",
         slaHours: 4,
       },
     }),
     prisma.category.upsert({
-      where: { id: "cat-003" },
+      where: { id: "cccccccc-cccc-cccc-cccc-cccccccccccc" },
       update: {},
       create: {
-        id: "cat-003",
+        id: "cccccccc-cccc-cccc-cccc-cccccccccccc",
         name: "Insumos",
         slaHours: 48,
       },
