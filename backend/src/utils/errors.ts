@@ -26,3 +26,15 @@ export class NotFoundError extends AppError {
     super(message, 404, "NOT_FOUND");
   }
 }
+
+export class ForbiddenError extends AppError {
+  constructor(message = "Acesso negado") {
+    super(message, 403, "FORBIDDEN");
+  }
+}
+
+export class UnprocessableEntityError extends AppError {
+  constructor(message = "Erro ao processar dados") {
+    super(message, 422, "UNPROCESSABLE_ENTITY");
+  }
+}

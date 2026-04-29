@@ -1,5 +1,6 @@
 import { PrismaClient, Ticket, TicketPriority, TicketStatus } from "@prisma/client";
-import { NotFoundError } from "../utils/errors";
+import { NotFoundError, UnprocessableEntityError } from "../utils/errors";
+import { isValidTransition } from "../utils/ticket-transitions";
 
 export type CreateTicketInput = {
   title: string;
@@ -10,6 +11,12 @@ export type CreateTicketInput = {
 };
 
 export type CreateTicketResponse = Ticket;
+
+export type UpdateStatusInput = {
+  status: TicketStatus;
+};
+
+export type UpdateStatusResponse = Ticket;
 
 export type ListTicketsFilters = {
   status?: TicketStatus;
@@ -154,6 +161,59 @@ export function createTicketService(prisma: PrismaClient) {
       }
 
       return ticket;
+    },
+
+    async updateStatus(ticketId: string, input: UpdateStatusInput): Promise<UpdateStatusResponse> {
+      // Buscar o ticket atual
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        throw new NotFoundError("Ticket não encontrado");
+      }
+
+      // Validar transição de status
+      if (!isValidTransition(ticket.status, input.status)) {
+        throw new UnprocessableEntityError(
+          `Transição inválida de ${ticket.status} para ${input.status}`,
+        );
+      }
+
+      // Preparar dados para atualizar
+      const updateData: any = {
+        status: input.status,
+      };
+
+      // Preencher timestamps automaticamente
+      if (input.status === TicketStatus.RESOLVED) {
+        updateData.resolvedAt = new Date();
+      }
+      if (input.status === TicketStatus.CLOSED) {
+        updateData.closedAt = new Date();
+      }
+
+      // Atualizar o ticket
+      const updatedTicket = await prisma.ticket.update({
+        where: { id: ticketId },
+        data: updateData,
+        include: {
+          reporter: {
+            select: { id: true, name: true, email: true },
+          },
+          assignee: {
+            select: { id: true, name: true, email: true },
+          },
+          category: {
+            select: { id: true, name: true, slaHours: true },
+          },
+          location: {
+            select: { id: true, name: true, building: true, floor: true },
+          },
+        },
+      });
+
+      return updatedTicket;
     },
   };
 }

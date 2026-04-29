@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { TicketPriority, TicketStatus } from "@prisma/client";
 import { TicketService } from "../services/ticket.service";
+import { VALID_TRANSITIONS } from "../utils/ticket-transitions";
 
 export const createTicketSchema = z.object({
   title: z.string().min(1, "Título é obrigatório").max(100, "Título deve ter no máximo 100 caracteres"),
@@ -19,6 +20,10 @@ export const listTicketsSchema = z.object({
   assigneeId: z.string().uuid().optional(),
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().max(100).optional(),
+});
+
+export const updateStatusSchema = z.object({
+  status: z.nativeEnum(TicketStatus, { errorMap: () => ({ message: "Status inválido" }) }),
 });
 
 export function createTicketController(ticketService: TicketService) {
@@ -61,6 +66,18 @@ export function createTicketController(ticketService: TicketService) {
       try {
         const { id } = req.params as { id: string };
         const result = await ticketService.getById(id);
+        return res.status(200).json(result);
+      } catch (err) {
+        return next(err);
+      }
+    },
+
+    async updateStatus(req: Request, res: Response, next: NextFunction) {
+      try {
+        const { id } = req.params as { id: string };
+        const input = req.body;
+
+        const result = await ticketService.updateStatus(id, input);
         return res.status(200).json(result);
       } catch (err) {
         return next(err);
