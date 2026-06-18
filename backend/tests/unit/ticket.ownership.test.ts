@@ -7,6 +7,13 @@ import { Ticket, TicketPriority, UserRole } from "@prisma/client";
 function makePrismaMock() {
   const tickets = new Map<string, Ticket>();
 
+  // O service calcula dueAt a partir de ticket.category.slaHours, então o
+  // findMany/findUnique do mock precisam devolver a relação category.
+  const withCategory = (ticket: Ticket) => ({
+    ...ticket,
+    category: { id: ticket.categoryId, name: "Categoria", slaHours: 24 },
+  });
+
   const applyWhere = (rows: Ticket[], where: any) => {
     let result = rows;
     if (where?.status) result = result.filter((t) => t.status === where.status);
@@ -39,12 +46,15 @@ function makePrismaMock() {
       }),
       findMany: jest.fn(async ({ where, skip, take }: any) => {
         const filtered = applyWhere(Array.from(tickets.values()), where);
-        return filtered.slice(skip || 0, (skip || 0) + (take || 20));
+        return filtered.slice(skip || 0, (skip || 0) + (take || 20)).map(withCategory);
       }),
       count: jest.fn(async ({ where }: any) =>
         applyWhere(Array.from(tickets.values()), where).length,
       ),
-      findUnique: jest.fn(async ({ where }: any) => tickets.get(where.id) ?? null),
+      findUnique: jest.fn(async ({ where }: any) => {
+        const ticket = tickets.get(where.id);
+        return ticket ? withCategory(ticket) : null;
+      }),
     },
     location: { findUnique: jest.fn(async () => ({ id: "loc-1" })) },
     category: { findUnique: jest.fn(async () => ({ id: "cat-1", slaHours: 24 })) },

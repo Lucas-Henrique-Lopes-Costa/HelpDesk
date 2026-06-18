@@ -6,6 +6,7 @@ import swaggerUi from "swagger-ui-express";
 import { healthRouter } from "./routes/health.routes";
 import { authRouter } from "./routes/auth.routes";
 import { ticketRouter } from "./routes/ticket.routes";
+import { usersRouter } from "./routes/users.routes";
 import { errorHandler } from "./middleware/error-handler";
 import { openApiSpec } from "./docs/openapi";
 
@@ -25,6 +26,7 @@ export function createApp(): Application {
 
   app.use("/health", healthRouter);
   app.use("/auth", authRouter);
+  app.use("/users", usersRouter);
   app.use("/tickets", ticketRouter);
 
   app.get("/openapi.json", (_req, res) => res.json(openApiSpec));

@@ -18,12 +18,28 @@ export const listTicketsSchema = z.object({
   categoryId: z.string().uuid().optional(),
   locationId: z.string().uuid().optional(),
   assigneeId: z.string().uuid().optional(),
+  slaBreached: z.coerce.boolean().optional(),
   page: z.coerce.number().int().positive().optional(),
   pageSize: z.coerce.number().int().positive().max(100).optional(),
 });
 
 export const updateStatusSchema = z.object({
   status: z.nativeEnum(TicketStatus, { errorMap: () => ({ message: "Status inválido" }) }),
+});
+
+export const createCommentSchema = z.object({
+  body: z.string().min(1, "Comentário não pode estar vazio").max(5000, "Comentário muito longo"),
+});
+
+export const createAttachmentSchema = z.object({
+  url: z.string().url("URL inválida"),
+  mimeType: z.string().min(1, "Tipo MIME é obrigatório"),
+  sizeBytes: z.number().int().positive("Tamanho deve ser positivo"),
+  kind: z.enum(["BEFORE", "AFTER"]),
+});
+
+export const assignTicketSchema = z.object({
+  assigneeId: z.string().uuid("ID do responsável deve ser um UUID válido").nullable(),
 });
 
 export function createTicketController(ticketService: TicketService) {
@@ -48,6 +64,7 @@ export function createTicketController(ticketService: TicketService) {
           categoryId: req.query.categoryId as string,
           locationId: req.query.locationId as string,
           assigneeId: req.query.assigneeId as string,
+          slaBreached: req.query.slaBreached ? req.query.slaBreached === "true" : undefined,
         };
 
         const options = {
@@ -81,6 +98,78 @@ export function createTicketController(ticketService: TicketService) {
         const input = req.body;
 
         const result = await ticketService.updateStatus(id, input);
+        return res.status(200).json(result);
+      } catch (err) {
+        return next(err);
+      }
+    },
+
+    // ===== COMENTÁRIOS =====
+    async listComments(req: Request, res: Response, next: NextFunction) {
+      try {
+        const { id } = req.params as { id: string };
+        const result = await ticketService.listComments(id);
+        return res.status(200).json(result);
+      } catch (err) {
+        return next(err);
+      }
+    },
+
+    async createComment(req: Request, res: Response, next: NextFunction) {
+      try {
+        const { id } = req.params as { id: string };
+        const { body } = req.body;
+        const authorId = req.user.sub;
+
+        const result = await ticketService.createComment(id, authorId, body);
+        return res.status(201).json(result);
+      } catch (err) {
+        return next(err);
+      }
+    },
+
+    // ===== ANEXOS =====
+    async listAttachments(req: Request, res: Response, next: NextFunction) {
+      try {
+        const { id } = req.params as { id: string };
+        const result = await ticketService.listAttachments(id);
+        return res.status(200).json(result);
+      } catch (err) {
+        return next(err);
+      }
+    },
+
+    async createAttachment(req: Request, res: Response, next: NextFunction) {
+      try {
+        const { id } = req.params as { id: string };
+        const { url, mimeType, sizeBytes, kind } = req.body;
+
+        const result = await ticketService.createAttachment(id, url, mimeType, sizeBytes, kind);
+        return res.status(201).json(result);
+      } catch (err) {
+        return next(err);
+      }
+    },
+
+    // ===== ATRIBUIÇÃO =====
+    async assignTicket(req: Request, res: Response, next: NextFunction) {
+      try {
+        const { id } = req.params as { id: string };
+        const { assigneeId } = req.body;
+        const userId = req.user.sub;
+        const userRole = req.user.role;
+
+        const result = await ticketService.assignTicket(id, assigneeId, userId, userRole);
+        return res.status(200).json(result);
+      } catch (err) {
+        return next(err);
+      }
+    },
+
+    // ===== ESTATÍSTICAS =====
+    async getStats(req: Request, res: Response, next: NextFunction) {
+      try {
+        const result = await ticketService.getStats();
         return res.status(200).json(result);
       } catch (err) {
         return next(err);
