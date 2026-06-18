@@ -3,6 +3,7 @@ import { jwtService, JwtPayload } from "../config/jwt";
 import { UnauthorizedError } from "../utils/errors";
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user: JwtPayload;
