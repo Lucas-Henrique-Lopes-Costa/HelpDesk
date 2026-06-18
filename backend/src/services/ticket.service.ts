@@ -172,18 +172,20 @@ export function createTicketService(prisma: PrismaClient) {
         };
       });
 
+      let totalForPagination = total;
       if (filters.slaBreached !== undefined) {
         filteredData = filteredData.filter((t) => t.slaBreached === filters.slaBreached);
+        totalForPagination = filteredData.length;
       }
 
-      const totalPages = Math.ceil(total / pageSize);
+      const totalPages = Math.ceil(totalForPagination / pageSize);
 
       return {
         data: filteredData,
-        total: filteredData.length,
+        total: totalForPagination,
         page,
         pageSize,
-        totalPages: Math.ceil(filteredData.length / pageSize),
+        totalPages,
       };
     },
 
