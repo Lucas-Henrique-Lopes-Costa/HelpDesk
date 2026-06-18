@@ -40,7 +40,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
       - run: npx prisma generate
-      # TODO(sprint-2): adicionar step de lint quando ESLint estiver configurado
+      - run: npm run lint
       - run: npm test -- --runInBand
       - run: npm run build
 

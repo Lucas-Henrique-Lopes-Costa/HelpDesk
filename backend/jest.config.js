@@ -16,6 +16,12 @@ module.exports = {
   ],
   coverageDirectory: "coverage",
   coverageReporters: ["text", "lcov", "html"],
+  coverageThreshold: {
+    global: {
+      statements: 60,
+      lines: 60,
+    },
+  },
   clearMocks: true,
   verbose: true,
   setupFiles: ["<rootDir>/tests/setup.ts"],
