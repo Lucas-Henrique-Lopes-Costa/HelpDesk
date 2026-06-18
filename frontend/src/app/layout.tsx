@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { Topbar } from "@/components/Topbar";
@@ -6,6 +6,21 @@ import { Topbar } from "@/components/Topbar";
 export const metadata: Metadata = {
   title: "HelpDesk Operacional",
   description: "Sistema de chamados operacionais — UFLA GCC267",
+  manifest: "/manifest.webmanifest",
+  applicationName: "HelpDesk",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "HelpDesk",
+  },
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
 };
 
 export default function RootLayout({

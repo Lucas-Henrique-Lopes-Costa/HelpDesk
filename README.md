@@ -69,14 +69,30 @@ Frontend: abra <http://localhost:3000>. As credenciais do seed são `admin@helpd
 
 ### Modo mock do frontend (sem backend)
 
-Para navegar pelas telas sem subir Postgres/backend, edite `frontend/.env.local`:
+Para navegar por **todas** as telas sem subir Postgres/Redis/MinIO/backend, edite `frontend/.env.local`:
 
 ```
 NEXT_PUBLIC_API_URL=http://localhost:3333
 NEXT_PUBLIC_USE_MOCK=true
 ```
 
-Com o flag ligado, o dashboard usa 5 chamados mockados em memória e o formulário de novo chamado cria registros locais (somem ao recarregar). Útil para demo offline e desenvolvimento de UI.
+Com o flag ligado, um backend em memória (`src/lib/mock-db.ts`) implementa o mesmo
+contrato dos endpoints reais — incluindo **login**, detalhe do chamado, comentários,
+evidências (antes/depois), atribuição, SLA e o `GET /tickets/stats`. Os dados vivem em
+memória e são reiniciados a cada reload da página. Ideal para a demo offline da banca.
+
+**Login mockado:** qualquer senha é aceita e o **papel é derivado do e-mail**, para
+exercitar o RBAC das telas:
+
+| E-mail | Papel | Enxerga |
+|---|---|---|
+| `admin@helpdesk.local` | ADMIN | tudo (Chamados, Fila, Indicadores) |
+| `gestor@helpdesk.local` | MANAGER | tudo + atribuição |
+| `carlos@helpdesk.local` | OPERATOR | Chamados, Fila (assume chamados) |
+| `maria@helpdesk.local` | REQUESTER | abre chamados / vê os próprios |
+
+> Em produção (`NEXT_PUBLIC_USE_MOCK=false`) as mesmas telas consomem a API real; basta
+> apontar `NEXT_PUBLIC_API_URL` para o backend publicado.
 
 ## Scripts do backend
 

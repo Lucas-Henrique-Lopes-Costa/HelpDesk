@@ -10,8 +10,11 @@ import {
   type ReactNode,
 } from "react";
 import { api } from "./api";
+import { useMock } from "./tickets";
+import { mockRoleForEmail, mockUserForEmail } from "./mock-db";
+import type { UserRole } from "./rbac";
 
-export type UserRole = "REQUESTER" | "TECHNICIAN" | "MANAGER" | "ADMIN";
+export type { UserRole } from "./rbac";
 
 export type AuthUser = {
   id: string;
@@ -58,16 +61,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const data = await api<LoginResponse>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-    localStorage.setItem(STORAGE_TOKEN, data.token);
-    localStorage.setItem(STORAGE_USER, JSON.stringify(data.user));
-    setToken(data.token);
-    setUser(data.user);
+  const persist = useCallback((nextToken: string, nextUser: AuthUser) => {
+    localStorage.setItem(STORAGE_TOKEN, nextToken);
+    localStorage.setItem(STORAGE_USER, JSON.stringify(nextUser));
+    setToken(nextToken);
+    setUser(nextUser);
   }, []);
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      // Modo demo: autentica em memória, sem backend. O papel é derivado do
+      // e-mail (ver mockRoleForEmail) para exercitar o RBAC das telas.
+      if (useMock) {
+        const mockUser: AuthUser = {
+          ...mockUserForEmail(email),
+          role: mockRoleForEmail(email),
+        };
+        persist(`mock-${mockUser.id}`, mockUser);
+        return;
+      }
+
+      const data = await api<LoginResponse>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      });
+      persist(data.token, data.user);
+    },
+    [persist],
+  );
 
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_TOKEN);

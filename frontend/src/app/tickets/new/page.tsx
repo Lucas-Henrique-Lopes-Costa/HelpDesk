@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
+import { useRequireAuth } from "@/lib/use-require-auth";
 import { createTicket, type TicketPriority } from "@/lib/tickets";
+import { uploadAttachment } from "@/lib/attachments";
+import { messageFromError } from "@/lib/api";
+import { PhotoUpload } from "@/components/PhotoUpload";
 
 // TODO: trocar por GET /locations e GET /categories quando os endpoints existirem.
 // Os IDs abaixo são placeholders no formato UUID exigido por createTicketSchema.
@@ -28,20 +31,17 @@ const PRIORITY_OPTIONS: { value: TicketPriority; label: string }[] = [
 
 export default function NewTicketPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, authorized } = useRequireAuth();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [locationId, setLocationId] = useState(LOCATION_OPTIONS[0].id);
   const [categoryId, setCategoryId] = useState(CATEGORY_OPTIONS[0].id);
   const [priority, setPriority] = useState<TicketPriority>("MEDIUM");
+  const [beforePhoto, setBeforePhoto] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!authLoading && !user) router.replace("/login");
-  }, [user, authLoading, router]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -55,23 +55,33 @@ export default function NewTicketPage() {
 
     setSubmitting(true);
     try {
-      await createTicket({
+      const created = await createTicket({
         title: title.trim(),
         description: description.trim() || undefined,
         locationId,
         categoryId,
         priority,
       });
-      setToast("Chamado criado com sucesso.");
-      setTimeout(() => router.push("/dashboard"), 600);
+
+      // Anexa a foto "antes", se houver. Falha no upload não invalida o chamado.
+      if (beforePhoto) {
+        try {
+          await uploadAttachment(created.id, beforePhoto, "BEFORE");
+        } catch {
+          setToast("Chamado criado, mas a foto não pôde ser enviada.");
+        }
+      }
+
+      setToast((prev) => prev ?? "Chamado criado com sucesso.");
+      setTimeout(() => router.push(`/tickets/${created.id}`), 600);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao criar chamado.");
+      setError(messageFromError(err));
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (authLoading || !user) {
+  if (!authorized || !user) {
     return <div className="text-sm text-slate-500">Verificando sessão…</div>;
   }
 
@@ -88,10 +98,7 @@ export default function NewTicketPage() {
         noValidate
       >
         <div>
-          <label
-            htmlFor="title"
-            className="block text-sm font-medium text-slate-700"
-          >
+          <label htmlFor="title" className="block text-sm font-medium text-slate-700">
             Título
           </label>
           <input
@@ -169,10 +176,7 @@ export default function NewTicketPage() {
         </div>
 
         <div>
-          <label
-            htmlFor="priority"
-            className="block text-sm font-medium text-slate-700"
-          >
+          <label htmlFor="priority" className="block text-sm font-medium text-slate-700">
             Prioridade
           </label>
           <select
@@ -189,11 +193,15 @@ export default function NewTicketPage() {
           </select>
         </div>
 
+        <PhotoUpload
+          label="Foto antes (opcional)"
+          value={beforePhoto}
+          onChange={setBeforePhoto}
+          uploading={submitting && !!beforePhoto}
+        />
+
         {error && (
-          <p
-            role="alert"
-            className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
-          >
+          <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </p>
         )}
