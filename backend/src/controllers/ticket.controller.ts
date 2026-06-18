@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { TicketPriority, TicketStatus, UserRole } from "@prisma/client";
 import { TicketService } from "../services/ticket.service";
-import { VALID_TRANSITIONS } from "../utils/ticket-transitions";
 
 export const createTicketSchema = z.object({
   title: z.string().min(1, "Título é obrigatório").max(100, "Título deve ter no máximo 100 caracteres"),

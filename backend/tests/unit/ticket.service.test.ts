@@ -2,13 +2,6 @@ import { createTicketService } from "../../src/services/ticket.service";
 import { NotFoundError } from "../../src/utils/errors";
 import { Ticket, TicketStatus, TicketPriority, Location, Category, User } from "@prisma/client";
 
-type TicketRow = Ticket & {
-  reporter: Pick<User, "id" | "name" | "email"> | null;
-  assignee: Pick<User, "id" | "name" | "email"> | null;
-  category: Pick<Category, "id" | "name" | "slaHours"> | null;
-  location: Pick<Location, "id" | "name" | "building" | "floor"> | null;
-};
-
 function makePrismaMock() {
   const tickets = new Map<string, Ticket>();
   const locations = new Map<string, Location>();
