@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { TicketPriority, TicketStatus } from "@prisma/client";
+import { TicketPriority, TicketStatus, UserRole } from "@prisma/client";
 import { TicketService } from "../services/ticket.service";
 import { VALID_TRANSITIONS } from "../utils/ticket-transitions";
 
@@ -55,7 +55,9 @@ export function createTicketController(ticketService: TicketService) {
           pageSize: req.query.pageSize ? parseInt(req.query.pageSize as string) : 20,
         };
 
-        const result = await ticketService.list(filters, options);
+        const viewer = { userId: req.user.sub, role: req.user.role as UserRole };
+
+        const result = await ticketService.list(filters, options, viewer);
         return res.status(200).json(result);
       } catch (err) {
         return next(err);
@@ -65,7 +67,8 @@ export function createTicketController(ticketService: TicketService) {
     async getById(req: Request, res: Response, next: NextFunction) {
       try {
         const { id } = req.params as { id: string };
-        const result = await ticketService.getById(id);
+        const viewer = { userId: req.user.sub, role: req.user.role as UserRole };
+        const result = await ticketService.getById(id, viewer);
         return res.status(200).json(result);
       } catch (err) {
         return next(err);
