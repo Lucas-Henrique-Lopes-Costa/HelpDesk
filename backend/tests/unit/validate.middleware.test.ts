@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { z, ZodError } from "zod";
+import { z } from "zod";
 import { validateBody, isZodError } from "../../src/middleware/validate";
 
 function makeRes(): Response {
@@ -39,8 +39,8 @@ describe("validateBody", () => {
 
     // Assert
     expect(next).not.toHaveBeenCalled();
-    expect((res.status as jest.Mock)).toHaveBeenCalledWith(422);
-    expect((res.json as jest.Mock)).toHaveBeenCalledWith(
+    expect(res.status as jest.Mock).toHaveBeenCalledWith(422);
+    expect(res.json as jest.Mock).toHaveBeenCalledWith(
       expect.objectContaining({
         error: "VALIDATION_ERROR",
         issues: expect.arrayContaining([
