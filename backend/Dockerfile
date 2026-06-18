@@ -4,6 +4,9 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
+# Prisma precisa de OpenSSL/libc6-compat para detectar o engine correto no Alpine (musl).
+RUN apk add --no-cache openssl libc6-compat
+
 COPY package*.json ./
 RUN npm ci
 
@@ -14,6 +17,9 @@ RUN npx prisma generate && npm run build
 FROM node:20-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+
+# Prisma precisa de OpenSSL/libc6-compat em runtime (migrate deploy + query engine).
+RUN apk add --no-cache openssl libc6-compat
 
 # Apenas dependências de produção (inclui prisma CLI e tsx para migrate/seed no boot)
 COPY package*.json ./
