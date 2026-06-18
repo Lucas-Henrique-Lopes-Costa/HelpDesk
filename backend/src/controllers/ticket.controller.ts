@@ -104,7 +104,7 @@ export function createTicketController(ticketService: TicketService) {
     // ===== COMENTÁRIOS =====
     async listComments(req: Request, res: Response, next: NextFunction) {
       try {
-        const { id } = req.params;
+        const { id } = req.params as { id: string };
         const result = await ticketService.listComments(id);
         return res.status(200).json(result);
       } catch (err) {
@@ -114,7 +114,7 @@ export function createTicketController(ticketService: TicketService) {
 
     async createComment(req: Request, res: Response, next: NextFunction) {
       try {
-        const { id } = req.params;
+        const { id } = req.params as { id: string };
         const { body } = req.body;
         const authorId = req.user.sub;
 
@@ -128,7 +128,7 @@ export function createTicketController(ticketService: TicketService) {
     // ===== ANEXOS =====
     async listAttachments(req: Request, res: Response, next: NextFunction) {
       try {
-        const { id } = req.params;
+        const { id } = req.params as { id: string };
         const result = await ticketService.listAttachments(id);
         return res.status(200).json(result);
       } catch (err) {
@@ -138,7 +138,7 @@ export function createTicketController(ticketService: TicketService) {
 
     async createAttachment(req: Request, res: Response, next: NextFunction) {
       try {
-        const { id } = req.params;
+        const { id } = req.params as { id: string };
         const { url, mimeType, sizeBytes, kind } = req.body;
 
         const result = await ticketService.createAttachment(id, url, mimeType, sizeBytes, kind);
@@ -151,7 +151,7 @@ export function createTicketController(ticketService: TicketService) {
     // ===== ATRIBUIÇÃO =====
     async assignTicket(req: Request, res: Response, next: NextFunction) {
       try {
-        const { id } = req.params;
+        const { id } = req.params as { id: string };
         const { assigneeId } = req.body;
         const userId = req.user.sub;
         const userRole = req.user.role;
