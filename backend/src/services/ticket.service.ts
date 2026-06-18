@@ -1,6 +1,12 @@
-import { PrismaClient, Ticket, TicketPriority, TicketStatus, Comment, Attachment } from "@prisma/client";
-import { NotFoundError, UnprocessableEntityError } from "../utils/errors";
+import { PrismaClient, Ticket, TicketPriority, TicketStatus, UserRole, Comment, Attachment } from "@prisma/client";
+import { ForbiddenError, NotFoundError, UnprocessableEntityError } from "../utils/errors";
 import { isValidTransition } from "../utils/ticket-transitions";
+
+// Quem está consultando — usado para aplicar ownership (REQUESTER só enxerga os próprios chamados).
+export type TicketViewer = {
+  userId: string;
+  role: UserRole;
+};
 
 export type CreateTicketInput = {
   title: string;
@@ -124,6 +130,7 @@ export function createTicketService(prisma: PrismaClient) {
     async list(
       filters: ListTicketsFilters = {},
       options: ListTicketsOptions = {},
+      viewer?: TicketViewer,
     ): Promise<TicketListResponse> {
       const page = options.page ?? 1;
       const pageSize = options.pageSize ?? 20;
@@ -136,6 +143,11 @@ export function createTicketService(prisma: PrismaClient) {
       if (filters.categoryId) where.categoryId = filters.categoryId;
       if (filters.locationId) where.locationId = filters.locationId;
       if (filters.assigneeId) where.assigneeId = filters.assigneeId;
+
+      // Ownership: solicitante só enxerga os chamados que ele mesmo abriu.
+      if (viewer && viewer.role === UserRole.REQUESTER) {
+        where.reporterId = viewer.userId;
+      }
 
       const [data, total] = await Promise.all([
         prisma.ticket.findMany({
@@ -189,7 +201,10 @@ export function createTicketService(prisma: PrismaClient) {
       };
     },
 
-    async getById(id: string): Promise<Ticket & { dueAt: string; slaBreached: boolean }> {
+    async getById(
+      id: string,
+      viewer?: TicketViewer,
+    ): Promise<Ticket & { dueAt: string; slaBreached: boolean }> {
       const ticket: any = await prisma.ticket.findUnique({
         where: { id },
         include: {
@@ -210,6 +225,11 @@ export function createTicketService(prisma: PrismaClient) {
 
       if (!ticket) {
         throw new NotFoundError("Ticket não encontrado");
+      }
+
+      // Ownership: solicitante só pode abrir os próprios chamados.
+      if (viewer && viewer.role === UserRole.REQUESTER && ticket.reporterId !== viewer.userId) {
+        throw new ForbiddenError("Você não tem acesso a este chamado");
       }
 
       const dueAt = calculateDueAt(ticket.createdAt, ticket.category.slaHours);

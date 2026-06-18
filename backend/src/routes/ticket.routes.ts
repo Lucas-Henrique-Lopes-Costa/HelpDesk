@@ -29,15 +29,16 @@ ticketRouter.post(
   (req, res, next) => ticketController.create(req, res, next),
 );
 
-// GET - Listar tickets (apenas operacional, gestores e admin enxergam o backlog)
+// GET - Listar tickets. Operacional/gestores/admin veem o backlog inteiro;
+// o solicitante (REQUESTER) recebe apenas os chamados que ele mesmo abriu (ownership no service).
 ticketRouter.get(
   "/",
   authenticate,
-  authorize(UserRole.MANAGER, UserRole.ADMIN, UserRole.OPERATOR),
+  authorize(UserRole.REQUESTER, UserRole.MANAGER, UserRole.ADMIN, UserRole.OPERATOR),
   (req, res, next) => ticketController.list(req, res, next),
 );
 
-// GET - Estatísticas de tickets (ANTES das rotas parametrizadas para evitar conflito)
+// GET - Estatísticas de tickets (ANTES das rotas parametrizadas para evitar conflito com /:id)
 ticketRouter.get(
   "/stats",
   authenticate,
@@ -45,7 +46,8 @@ ticketRouter.get(
   (req, res, next) => ticketController.getStats(req, res, next),
 );
 
-// GET - Detalhar ticket específico (qualquer usuário autenticado; ownership do REQUESTER será aplicada no Sprint 2)
+// GET - Detalhar ticket específico. REQUESTER só acessa os próprios (403 caso contrário);
+// demais papéis acessam qualquer chamado. Ownership aplicada no service.
 ticketRouter.get("/:id", authenticate, (req, res, next) =>
   ticketController.getById(req, res, next),
 );
