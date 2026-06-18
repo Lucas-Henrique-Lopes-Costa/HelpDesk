@@ -1,4 +1,5 @@
-import type { TicketPriority, TicketStatus } from "@/lib/tickets";
+import type { TicketListItem, TicketPriority, TicketStatus } from "@/lib/tickets";
+import { slaInfo, type SlaUrgency } from "@/lib/sla";
 
 type BadgeStyle = { label: string; className: string; dotClassName: string };
 
@@ -22,6 +23,11 @@ const STATUS_STYLES: Record<TicketStatus, BadgeStyle> = {
     label: "Fechado",
     className: "bg-slate-200 text-slate-700",
     dotClassName: "bg-slate-500",
+  },
+  CANCELED: {
+    label: "Cancelado",
+    className: "bg-rose-100 text-rose-700",
+    dotClassName: "bg-rose-400",
   },
 };
 
@@ -68,4 +74,36 @@ export function StatusBadge({ status }: { status: TicketStatus }) {
 
 export function PriorityBadge({ priority }: { priority: TicketPriority }) {
   return <Badge style={PRIORITY_STYLES[priority]} />;
+}
+
+const SLA_CLASSNAME: Record<SlaUrgency, string> = {
+  breached: "bg-red-100 text-red-800",
+  soon: "bg-amber-100 text-amber-800",
+  ok: "bg-emerald-50 text-emerald-700",
+  none: "bg-slate-100 text-slate-600",
+  done: "bg-slate-100 text-slate-500",
+};
+
+/**
+ * Badge de SLA derivado de dueAt/slaBreached/status. Não renderiza nada para
+ * chamados em estado terminal (SLA não se aplica).
+ */
+export function SlaBadge({
+  ticket,
+  hideWhenDone = true,
+}: {
+  ticket: Pick<TicketListItem, "status" | "dueAt" | "slaBreached">;
+  hideWhenDone?: boolean;
+}) {
+  const info = slaInfo(ticket);
+  if (info.urgency === "done" && hideWhenDone) return null;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${SLA_CLASSNAME[info.urgency]}`}
+      title="SLA"
+    >
+      <span aria-hidden>⏱</span>
+      {info.label}
+    </span>
+  );
 }
