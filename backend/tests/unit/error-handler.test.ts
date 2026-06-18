@@ -19,6 +19,10 @@ function makeRes(): Response {
 }
 
 describe("errorHandler", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("responde com o statusCode e code de um AppError direto", () => {
     // Arrange
     const err = new AppError("Requisição inválida", 400, "APP_ERROR");
@@ -98,8 +102,6 @@ describe("errorHandler", () => {
       error: "INTERNAL_SERVER_ERROR",
       message: "Erro inesperado, verifique os logs do servidor.",
     });
-
-    jest.restoreAllMocks();
   });
 
   it("chama console.error com '[unhandled]' e o erro para erros genéricos", () => {
@@ -113,7 +115,5 @@ describe("errorHandler", () => {
 
     // Assert
     expect(consoleSpy).toHaveBeenCalledWith("[unhandled]", err);
-
-    consoleSpy.mockRestore();
   });
 });
