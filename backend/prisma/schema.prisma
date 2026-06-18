@@ -33,6 +33,11 @@ enum TicketPriority {
   CRITICAL
 }
 
+enum AttachmentKind {
+  BEFORE
+  AFTER
+}
+
 model User {
   id                String   @id @default(uuid())
   name              String
@@ -44,6 +49,7 @@ model User {
   updatedAt         DateTime @updatedAt @map("updated_at")
   ticketsReported   Ticket[] @relation("reporter")
   ticketsAssigned   Ticket[] @relation("assignee")
+  comments          Comment[]
 
   @@map("users")
 }
@@ -84,10 +90,39 @@ model Ticket {
   resolvedAt DateTime?      @map("resolved_at")
   closedAt   DateTime?      @map("closed_at")
 
-  reporter   User     @relation("reporter", fields: [reporterId], references: [id])
-  assignee   User?    @relation("assignee", fields: [assigneeId], references: [id])
-  category   Category @relation(fields: [categoryId], references: [id])
-  location   Location @relation(fields: [locationId], references: [id])
+  reporter    User         @relation("reporter", fields: [reporterId], references: [id])
+  assignee    User?        @relation("assignee", fields: [assigneeId], references: [id])
+  category    Category     @relation(fields: [categoryId], references: [id])
+  location    Location     @relation(fields: [locationId], references: [id])
+  comments    Comment[]
+  attachments Attachment[]
 
   @@map("tickets")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  ticketId  String   @map("ticket_id")
+  authorId  String   @map("author_id")
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@map("comments")
+}
+
+model Attachment {
+  id        String         @id @default(uuid())
+  ticketId  String         @map("ticket_id")
+  kind      AttachmentKind
+  url       String
+  mimeType  String         @map("mime_type")
+  sizeBytes Int            @map("size_bytes")
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+
+  @@map("attachments")
 }

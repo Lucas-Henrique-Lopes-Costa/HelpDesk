@@ -18,6 +18,7 @@ export const openApiSpec = {
   tags: [
     { name: "Health", description: "Status do serviço" },
     { name: "Auth", description: "Cadastro e autenticação via JWT" },
+    { name: "Users", description: "Gestão de usuários" },
     { name: "Tickets", description: "Gestão de chamados [US-02]" },
   ],
   components: {
@@ -139,6 +140,87 @@ export const openApiSpec = {
         },
         required: ["id", "name", "slaHours"],
       },
+      User: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string", example: "Carlos Silva" },
+          email: { type: "string", format: "email", example: "carlos@helpdesk.local" },
+          role: { $ref: "#/components/schemas/UserRole" },
+        },
+        required: ["id", "name", "email", "role"],
+      },
+      Comment: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          ticketId: { type: "string", format: "uuid" },
+          author: { $ref: "#/components/schemas/User" },
+          body: { type: "string", example: "Técnico a caminho" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+        required: ["id", "ticketId", "author", "body", "createdAt"],
+      },
+      AttachmentKind: {
+        type: "string",
+        enum: ["BEFORE", "AFTER"],
+        description: "BEFORE: evidência do problema. AFTER: comprovação da resolução.",
+      },
+      Attachment: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          ticketId: { type: "string", format: "uuid" },
+          kind: { $ref: "#/components/schemas/AttachmentKind" },
+          url: { type: "string", format: "uri", example: "https://s3.example.com/file123.jpg" },
+          mimeType: { type: "string", example: "image/jpeg" },
+          sizeBytes: { type: "number", example: 245120 },
+          createdAt: { type: "string", format: "date-time" },
+        },
+        required: ["id", "ticketId", "kind", "url", "mimeType", "sizeBytes", "createdAt"],
+      },
+      TicketStats: {
+        type: "object",
+        properties: {
+          byStatus: {
+            type: "object",
+            properties: {
+              OPEN: { type: "number" },
+              IN_PROGRESS: { type: "number" },
+              RESOLVED: { type: "number" },
+              CLOSED: { type: "number" },
+              CANCELED: { type: "number" },
+            },
+            required: ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED", "CANCELED"],
+          },
+          slaBreached: { type: "number", description: "Quantidade de tickets com SLA expirado" },
+          byAssignee: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                assigneeId: { type: "string", format: "uuid", nullable: true },
+                assigneeName: { type: "string", example: "Carlos Silva" },
+                count: { type: "number" },
+              },
+              required: ["assigneeId", "assigneeName", "count"],
+            },
+          },
+          byCategory: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                categoryId: { type: "string", format: "uuid" },
+                categoryName: { type: "string", example: "Manutenção" },
+                count: { type: "number" },
+              },
+              required: ["categoryId", "categoryName", "count"],
+            },
+          },
+        },
+        required: ["byStatus", "slaBreached", "byAssignee", "byCategory"],
+      },
       Ticket: {
         type: "object",
         properties: {
@@ -153,8 +235,10 @@ export const openApiSpec = {
           locationId: { type: "string", format: "uuid" },
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" },
+          dueAt: { type: "string", format: "date-time", description: "Prazo calculado (createdAt + slaHours da categoria)" },
+          slaBreached: { type: "boolean", description: "Se o prazo já foi ultrapassado" },
         },
-        required: ["id", "title", "status", "priority", "reporterId", "categoryId", "locationId", "createdAt", "updatedAt"],
+        required: ["id", "title", "status", "priority", "reporterId", "categoryId", "locationId", "createdAt", "updatedAt", "dueAt", "slaBreached"],
       },
       CreateTicketInput: {
         type: "object",
@@ -453,5 +537,333 @@ export const openApiSpec = {
         },
       },
     },
-  },
-} as const;
+    "/tickets/stats": {
+      get: {
+        tags: ["Tickets"],
+        summary: "Obter estatísticas de tickets",
+        description: "Retorna overview com contagem por status, SLA breached, carga por responsável e por categoria.",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          200: {
+            description: "Estatísticas calculadas",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/TicketStats" },
+              },
+            },
+          },
+          401: {
+            description: "Token inválido ou ausente",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          403: {
+            description: "Apenas gestores e admin",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/tickets/{id}/comments": {
+      get: {
+        tags: ["Tickets"],
+        summary: "Listar comentários do ticket",
+        description: "Retorna todos os comentários de um ticket em ordem cronológica.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" }, description: "ID do ticket" },
+        ],
+        responses: {
+          200: {
+            description: "Lista de comentários",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: { $ref: "#/components/schemas/Comment" },
+                },
+              },
+            },
+          },
+          401: {
+            description: "Token inválido ou ausente",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          404: {
+            description: "Ticket não encontrado",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        tags: ["Tickets"],
+        summary: "Criar comentário no ticket",
+        description: "Adiciona um novo comentário ao ticket. O autor é extraído do JWT.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" }, description: "ID do ticket" },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  body: { type: "string", minLength: 1, maxLength: 5000, example: "Técnico na caminho em 30 minutos" },
+                },
+                required: ["body"],
+              },
+            },
+          },
+        },
+        responses: {
+          201: {
+            description: "Comentário criado",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Comment" },
+              },
+            },
+          },
+          401: {
+            description: "Token inválido ou ausente",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          404: {
+            description: "Ticket não encontrado",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          422: {
+            description: "Dados inválidos",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/tickets/{id}/attachments": {
+      get: {
+        tags: ["Tickets"],
+        summary: "Listar anexos do ticket",
+        description: "Retorna todos os anexos (evidências) de um ticket.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" }, description: "ID do ticket" },
+        ],
+        responses: {
+          200: {
+            description: "Lista de anexos",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: { $ref: "#/components/schemas/Attachment" },
+                },
+              },
+            },
+          },
+          401: {
+            description: "Token inválido ou ausente",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          404: {
+            description: "Ticket não encontrado",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        tags: ["Tickets"],
+        summary: "Criar anexo no ticket",
+        description: "Adiciona um novo anexo (evidência) ao ticket. Para resolver um ticket (IN_PROGRESS → RESOLVED), é obrigatório ter pelo menos um anexo com kind=AFTER.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" }, description: "ID do ticket" },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  url: { type: "string", format: "uri", example: "https://s3.example.com/file123.jpg" },
+                  mimeType: { type: "string", example: "image/jpeg" },
+                  sizeBytes: { type: "number", example: 245120 },
+                  kind: { $ref: "#/components/schemas/AttachmentKind" },
+                },
+                required: ["url", "mimeType", "sizeBytes", "kind"],
+              },
+            },
+          },
+        },
+        responses: {
+          201: {
+            description: "Anexo criado",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Attachment" },
+              },
+            },
+          },
+          401: {
+            description: "Token inválido ou ausente",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          404: {
+            description: "Ticket não encontrado",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          422: {
+            description: "Dados inválidos",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/tickets/{id}/assign": {
+      patch: {
+        tags: ["Tickets"],
+        summary: "Atribuir ou desatribuir ticket",
+        description: "Um OPERATOR pode assumir um chamado (passando seu próprio ID). Um MANAGER pode atribuir a qualquer operador. Passando null desatribui. Se o ticket está OPEN e é atribuído, muda para IN_PROGRESS.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" }, description: "ID do ticket" },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  assigneeId: { type: "string", format: "uuid", nullable: true, example: "550e8400-e29b-41d4-a716-446655440000" },
+                },
+                required: ["assigneeId"],
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Ticket atribuído",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/Ticket" },
+              },
+            },
+          },
+          401: {
+            description: "Token inválido ou ausente",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          404: {
+            description: "Ticket não encontrado",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          422: {
+            description: "Dados inválidos ou violação de regra de negócio",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/users": {
+      get: {
+        tags: ["Users"],
+        summary: "Listar usuários por role",
+        description: "Retorna lista de usuários ativos filtrados por role. Útil para preenchimento de dropdowns (ex: escolher operador para atribuir chamado).",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          { name: "role", in: "query", required: true, schema: { type: "string", enum: ["ADMIN", "MANAGER", "REQUESTER", "OPERATOR"] }, description: "Role a filtrar" },
+        ],
+        responses: {
+          200: {
+            description: "Lista de usuários",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "array",
+                  items: { $ref: "#/components/schemas/User" },
+                },
+              },
+            },
+          },
+          400: {
+            description: "Parâmetro 'role' ausente ou inválido",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          401: {
+            description: "Token inválido ou ausente",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },

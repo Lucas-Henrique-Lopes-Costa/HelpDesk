@@ -1,4 +1,4 @@
-import { PrismaClient, Ticket, TicketPriority, TicketStatus } from "@prisma/client";
+import { PrismaClient, Ticket, TicketPriority, TicketStatus, Comment, Attachment } from "@prisma/client";
 import { NotFoundError, UnprocessableEntityError } from "../utils/errors";
 import { isValidTransition } from "../utils/ticket-transitions";
 
@@ -18,12 +18,28 @@ export type UpdateStatusInput = {
 
 export type UpdateStatusResponse = Ticket;
 
+export type CreateCommentInput = {
+  body: string;
+};
+
+export type CreateAttachmentInput = {
+  url: string;
+  mimeType: string;
+  sizeBytes: number;
+  kind: string;
+};
+
+export type AssignTicketInput = {
+  assigneeId: string | null;
+};
+
 export type ListTicketsFilters = {
   status?: TicketStatus;
   priority?: TicketPriority;
   categoryId?: string;
   locationId?: string;
   assigneeId?: string;
+  slaBreached?: boolean;
 };
 
 export type ListTicketsOptions = {
@@ -32,7 +48,10 @@ export type ListTicketsOptions = {
 };
 
 export type TicketListResponse = {
-  data: Ticket[];
+  data: (Ticket & {
+    dueAt: string;
+    slaBreached: boolean;
+  })[];
   total: number;
   page: number;
   pageSize: number;
@@ -40,6 +59,22 @@ export type TicketListResponse = {
 };
 
 export type TicketService = ReturnType<typeof createTicketService>;
+
+/**
+ * Calcula o tempo limite (dueAt) de um ticket baseado na categoria SLA
+ * dueAt = createdAt + (category.slaHours * 60 * 60 * 1000)
+ */
+function calculateDueAt(createdAt: Date, slaHours: number): string {
+  const dueDate = new Date(createdAt.getTime() + slaHours * 60 * 60 * 1000);
+  return dueDate.toISOString();
+}
+
+/**
+ * Verifica se um ticket ultrapassou o SLA
+ */
+function isSlaBreached(dueAt: string): boolean {
+  return new Date() > new Date(dueAt);
+}
 
 export function createTicketService(prisma: PrismaClient) {
   return {
@@ -126,19 +161,34 @@ export function createTicketService(prisma: PrismaClient) {
         prisma.ticket.count({ where }),
       ]);
 
+      // Aplicar filtro slaBreached em memória após obter dados
+      let filteredData = data.map((ticket: any) => {
+        const dueAt = calculateDueAt(ticket.createdAt, ticket.category.slaHours);
+        const slaBreached = isSlaBreached(dueAt);
+        return {
+          ...ticket,
+          dueAt,
+          slaBreached,
+        };
+      });
+
+      if (filters.slaBreached !== undefined) {
+        filteredData = filteredData.filter((t) => t.slaBreached === filters.slaBreached);
+      }
+
       const totalPages = Math.ceil(total / pageSize);
 
       return {
-        data,
-        total,
+        data: filteredData,
+        total: filteredData.length,
         page,
         pageSize,
-        totalPages,
+        totalPages: Math.ceil(filteredData.length / pageSize),
       };
     },
 
-    async getById(id: string): Promise<Ticket> {
-      const ticket = await prisma.ticket.findUnique({
+    async getById(id: string): Promise<Ticket & { dueAt: string; slaBreached: boolean }> {
+      const ticket: any = await prisma.ticket.findUnique({
         where: { id },
         include: {
           reporter: {
@@ -160,7 +210,14 @@ export function createTicketService(prisma: PrismaClient) {
         throw new NotFoundError("Ticket não encontrado");
       }
 
-      return ticket;
+      const dueAt = calculateDueAt(ticket.createdAt, ticket.category.slaHours);
+      const slaBreached = isSlaBreached(dueAt);
+
+      return {
+        ...ticket,
+        dueAt,
+        slaBreached,
+      };
     },
 
     async updateStatus(ticketId: string, input: UpdateStatusInput): Promise<UpdateStatusResponse> {
@@ -214,6 +271,194 @@ export function createTicketService(prisma: PrismaClient) {
       });
 
       return updatedTicket;
+    },
+
+    // ===== COMENTÁRIOS =====
+    async listComments(ticketId: string): Promise<(Comment & { author: { id: string; name: string; email: string } })[]> {
+      const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+      if (!ticket) {
+        throw new NotFoundError("Ticket não encontrado");
+      }
+
+      return prisma.comment.findMany({
+        where: { ticketId },
+        include: {
+          author: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+    },
+
+    async createComment(ticketId: string, authorId: string, body: string): Promise<Comment & { author: { id: string; name: string; email: string } }> {
+      const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+      if (!ticket) {
+        throw new NotFoundError("Ticket não encontrado");
+      }
+
+      return prisma.comment.create({
+        data: {
+          ticketId,
+          authorId,
+          body,
+        },
+        include: {
+          author: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      });
+    },
+
+    // ===== ANEXOS =====
+    async listAttachments(ticketId: string): Promise<Attachment[]> {
+      const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+      if (!ticket) {
+        throw new NotFoundError("Ticket não encontrado");
+      }
+
+      return prisma.attachment.findMany({
+        where: { ticketId },
+        orderBy: { createdAt: "asc" },
+      });
+    },
+
+    async createAttachment(ticketId: string, url: string, mimeType: string, sizeBytes: number, kind: string): Promise<Attachment> {
+      const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+      if (!ticket) {
+        throw new NotFoundError("Ticket não encontrado");
+      }
+
+      return prisma.attachment.create({
+        data: {
+          ticketId,
+          url,
+          mimeType,
+          sizeBytes,
+          kind: kind as any,
+        },
+      });
+    },
+
+    // ===== ATRIBUIÇÃO =====
+    async assignTicket(ticketId: string, assigneeId: string | null, userId: string, userRole: string): Promise<Ticket> {
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        include: {
+          category: { select: { slaHours: true } },
+        },
+      });
+
+      if (!ticket) {
+        throw new NotFoundError("Ticket não encontrado");
+      }
+
+      // Verificar permissões e regras de negócio
+      // Um OPERATOR pode assumir um chamado (passando seu próprio ID)
+      // Um MANAGER pode atribuir a qualquer operador
+      if (assigneeId && assigneeId !== userId && userRole !== "MANAGER") {
+        throw new UnprocessableEntityError("Apenas gerentes podem atribuir chamados a outros operadores");
+      }
+
+      // Se o ticket está OPEN e está sendo assumido, mover para IN_PROGRESS
+      let newStatus = ticket.status;
+      if (ticket.status === TicketStatus.OPEN && assigneeId) {
+        newStatus = TicketStatus.IN_PROGRESS;
+      }
+
+      const updated = await prisma.ticket.update({
+        where: { id: ticketId },
+        data: {
+          assigneeId: assigneeId || null,
+          status: newStatus,
+        },
+        include: {
+          reporter: {
+            select: { id: true, name: true, email: true },
+          },
+          assignee: {
+            select: { id: true, name: true, email: true },
+          },
+          category: {
+            select: { id: true, name: true, slaHours: true },
+          },
+          location: {
+            select: { id: true, name: true, building: true, floor: true },
+          },
+        },
+      });
+
+      return updated;
+    },
+
+    // ===== ESTATÍSTICAS =====
+    async getStats(): Promise<any> {
+      const tickets = await prisma.ticket.findMany({
+        include: {
+          assignee: { select: { id: true, name: true } },
+          category: { select: { id: true, name: true, slaHours: true } },
+        },
+      });
+
+      // Contar por status
+      const byStatus: Record<TicketStatus, number> = {
+        OPEN: 0,
+        IN_PROGRESS: 0,
+        RESOLVED: 0,
+        CLOSED: 0,
+        CANCELED: 0,
+      };
+
+      for (const ticket of tickets) {
+        byStatus[ticket.status]++;
+      }
+
+      // Contar SLA breached
+      let slaBreached = 0;
+      for (const ticket of tickets) {
+        const dueAt = calculateDueAt(ticket.createdAt, (ticket as any).category.slaHours);
+        if (isSlaBreached(dueAt)) {
+          slaBreached++;
+        }
+      }
+
+      // Agrupar por responsável
+      const byAssigneeMap = new Map<string | null, { name: string; count: number }>();
+      for (const ticket of tickets) {
+        const key = ticket.assigneeId || null;
+        const name = ticket.assignee?.name || "Não atribuído";
+        const current = byAssigneeMap.get(key) || { name, count: 0 };
+        byAssigneeMap.set(key, { ...current, count: current.count + 1 });
+      }
+
+      const byAssignee = Array.from(byAssigneeMap.entries()).map(([assigneeId, data]) => ({
+        assigneeId,
+        assigneeName: data.name,
+        count: data.count,
+      }));
+
+      // Agrupar por categoria
+      const byCategoryMap = new Map<string, { name: string; count: number }>();
+      for (const ticket of tickets) {
+        const categoryId = ticket.categoryId;
+        const categoryName = (ticket as any).category?.name || "Sem categoria";
+        const current = byCategoryMap.get(categoryId) || { name: categoryName, count: 0 };
+        byCategoryMap.set(categoryId, { ...current, count: current.count + 1 });
+      }
+
+      const byCategory = Array.from(byCategoryMap.entries()).map(([categoryId, data]) => ({
+        categoryId,
+        categoryName: data.name,
+        count: data.count,
+      }));
+
+      return {
+        byStatus,
+        slaBreached,
+        byAssignee,
+        byCategory,
+      };
     },
   };
 }
