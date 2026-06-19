@@ -29,21 +29,15 @@ export function createUsersController(prisma: PrismaClient) {
       try {
         const { role } = req.query as { role?: string };
 
-        if (!role) {
-          return res.status(400).json({
-            error: "BAD_REQUEST",
-            message: "Query parameter 'role' é obrigatório",
-          });
-        }
-
-        if (!Object.values(UserRole).includes(role as UserRole)) {
+        // role é opcional: sem ele, devolve todos. Com ele, precisa ser válido.
+        if (role && !Object.values(UserRole).includes(role as UserRole)) {
           return res.status(400).json({
             error: "BAD_REQUEST",
             message: "Role inválido",
           });
         }
 
-        const users = await usersService.listByRole(role as UserRole);
+        const users = await usersService.listByRole(role as UserRole | undefined);
         return res.status(200).json(users);
       } catch (err) {
         return next(err);

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRequireAuth } from "@/lib/use-require-auth";
-import { createUser, type PublicUser } from "@/lib/users";
+import { createUser, listUsers, type PublicUser } from "@/lib/users";
 import { messageFromError } from "@/lib/api";
 import { ADMIN_ROLES, ASSIGNABLE_ROLES, roleLabel, type UserRole } from "@/lib/rbac";
 
@@ -28,7 +28,25 @@ export default function AdminUsersPage() {
   const [form, setForm] = useState(EMPTY);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<PublicUser[]>([]);
+  const [users, setUsers] = useState<PublicUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      setUsers(await listUsers());
+    } catch (err) {
+      setLoadError(messageFromError(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (authorized) reload();
+  }, [authorized, reload]);
 
   if (!authorized || !user) {
     return <div className="text-sm text-slate-500">Verificando sessão…</div>;
@@ -46,15 +64,15 @@ export default function AdminUsersPage() {
 
     setSubmitting(true);
     try {
-      const novo = await createUser({
+      await createUser({
         name: form.name.trim(),
         email: form.email.trim(),
         password: form.password,
         role: form.role,
       });
-      setCreated((prev) => [novo, ...prev]);
       setForm({ ...EMPTY, role: form.role });
       setShowForm(false);
+      await reload();
     } catch (err) {
       setError(messageFromError(err));
     } finally {
@@ -181,11 +199,33 @@ export default function AdminUsersPage() {
         </form>
       )}
 
-      {created.length > 0 && (
-        <div className="mt-6">
-          <h2 className="text-sm font-medium text-slate-700">Criados nesta sessão</h2>
+      <div className="mt-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-slate-700">
+            Usuários cadastrados{!loading && ` (${users.length})`}
+          </h2>
+          <button
+            type="button"
+            onClick={reload}
+            className="text-xs font-medium text-slate-500 hover:text-slate-700"
+          >
+            Atualizar
+          </button>
+        </div>
+
+        {loadError && (
+          <p role="alert" className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+            {loadError}
+          </p>
+        )}
+
+        {loading ? (
+          <p className="mt-2 text-sm text-slate-500">Carregando…</p>
+        ) : users.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-500">Nenhum usuário cadastrado ainda.</p>
+        ) : (
           <ul className="mt-2 divide-y divide-slate-100 rounded-md border border-slate-200 bg-white">
-            {created.map((u) => (
+            {users.map((u) => (
               <li key={u.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                 <div>
                   <p className="font-medium text-slate-900">{u.name}</p>
@@ -197,8 +237,8 @@ export default function AdminUsersPage() {
               </li>
             ))}
           </ul>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

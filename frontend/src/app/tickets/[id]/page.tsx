@@ -9,13 +9,14 @@ import { addComment, listComments, type Comment } from "@/lib/comments";
 import { listAttachments, type Attachment } from "@/lib/attachments";
 import { listOperators } from "@/lib/users";
 import { messageFromError } from "@/lib/api";
-import { canAssignOthers, canComment } from "@/lib/rbac";
+import { canAssignOthers, canComment, canDeleteTicket } from "@/lib/rbac";
 import { formatDateTime, formatLocation } from "@/lib/format";
 import { PriorityBadge, SlaBadge, StatusBadge } from "@/components/StatusBadge";
 import { Avatar } from "@/components/Avatar";
 import { EvidenceGallery } from "@/components/EvidenceGallery";
 import { CommentTimeline } from "@/components/CommentTimeline";
 import { TicketActions } from "@/components/TicketActions";
+import { DeleteTicketButton } from "@/components/DeleteTicketButton";
 import { CenteredMessage, ErrorBanner } from "@/components/Feedback";
 
 function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
@@ -189,6 +190,10 @@ export default function TicketDetailPage() {
                   )}
                 </div>
               </section>
+
+              {canDeleteTicket(user.role) && (
+                <DeleteTicketButton ticketId={ticket.id} ticketTitle={ticket.title} />
+              )}
             </div>
           </div>
         </>

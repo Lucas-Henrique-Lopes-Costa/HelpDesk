@@ -61,6 +61,14 @@ ticketRouter.patch(
   (req, res, next) => ticketController.updateStatus(req, res, next),
 );
 
+// DELETE - Excluir chamado (somente ADMIN)
+ticketRouter.delete(
+  "/:id",
+  authenticate,
+  authorize(UserRole.ADMIN),
+  (req, res, next) => ticketController.remove(req, res, next),
+);
+
 // GET - Listar comentários do ticket
 ticketRouter.get("/:id/comments", authenticate, (req, res, next) =>
   ticketController.listComments(req, res, next),

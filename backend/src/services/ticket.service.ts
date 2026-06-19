@@ -482,5 +482,19 @@ export function createTicketService(prisma: PrismaClient) {
         byCategory,
       };
     },
+
+    // Remove o chamado e seus dependentes (comentários/anexos não têm cascade).
+    async remove(ticketId: string): Promise<void> {
+      const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
+      if (!ticket) {
+        throw new NotFoundError("Ticket não encontrado");
+      }
+
+      await prisma.$transaction([
+        prisma.comment.deleteMany({ where: { ticketId } }),
+        prisma.attachment.deleteMany({ where: { ticketId } }),
+        prisma.ticket.delete({ where: { id: ticketId } }),
+      ]);
+    },
   };
 }

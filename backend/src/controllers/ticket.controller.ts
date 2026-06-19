@@ -91,6 +91,16 @@ export function createTicketController(ticketService: TicketService) {
       }
     },
 
+    async remove(req: Request, res: Response, next: NextFunction) {
+      try {
+        const { id } = req.params as { id: string };
+        await ticketService.remove(id);
+        return res.status(204).send();
+      } catch (err) {
+        return next(err);
+      }
+    },
+
     async updateStatus(req: Request, res: Response, next: NextFunction) {
       try {
         const { id } = req.params as { id: string };

@@ -121,3 +121,9 @@ export async function assignTicket(
     body: JSON.stringify({ assigneeId: assignee?.id ?? null }),
   });
 }
+
+/** Exclui um chamado (DELETE /tickets/:id). Somente ADMIN no backend. */
+export async function deleteTicket(id: string): Promise<void> {
+  if (useMock) return mock.deleteTicket(id);
+  await api<void>(`/tickets/${id}`, { method: "DELETE" });
+}

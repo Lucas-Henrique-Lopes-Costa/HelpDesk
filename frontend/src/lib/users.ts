@@ -29,6 +29,24 @@ export async function createUser(input: CreateUserInput): Promise<PublicUser> {
   });
 }
 
+function normalizePublicUsers(res: unknown): PublicUser[] {
+  const arr = Array.isArray(res)
+    ? res
+    : res && Array.isArray((res as { data?: unknown }).data)
+      ? (res as { data: unknown[] }).data
+      : [];
+  return arr as PublicUser[];
+}
+
+/**
+ * Lista usuários (todos, ou de um papel específico). Consome `GET /users`.
+ */
+export async function listUsers(role?: UserRole): Promise<PublicUser[]> {
+  if (useMock) return mock.listUsers(role);
+  const query = role ? `?role=${role}` : "";
+  return normalizePublicUsers(await api<unknown>(`/users${query}`));
+}
+
 function normalizeList(res: unknown): UserMini[] {
   if (Array.isArray(res)) return res as UserMini[];
   if (res && Array.isArray((res as { data?: unknown }).data)) {

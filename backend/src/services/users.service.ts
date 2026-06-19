@@ -35,10 +35,12 @@ export function createUsersService(prisma: PrismaClient) {
       return { id: user.id, name: user.name, email: user.email, role: user.role };
     },
 
-    async listByRole(role: UserRole): Promise<PublicUser[]> {
+    // role opcional: sem ele, lista todos os usuários ativos (usado pela tela do admin).
+    async listByRole(role?: UserRole): Promise<PublicUser[]> {
       return prisma.user.findMany({
-        where: { role, active: true },
+        where: { active: true, ...(role ? { role } : {}) },
         select: { id: true, name: true, email: true, role: true },
+        orderBy: { name: "asc" },
       });
     },
   };

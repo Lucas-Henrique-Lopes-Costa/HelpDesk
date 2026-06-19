@@ -372,6 +372,14 @@ export async function assignTicket(
   return clone(recomputeBreach(t));
 }
 
+export async function deleteTicket(id: string): Promise<void> {
+  const idx = tickets.findIndex((x) => x.id === id);
+  if (idx === -1) throw new ApiError(404, "Chamado não encontrado");
+  tickets.splice(idx, 1);
+  delete comments[id];
+  delete attachments[id];
+}
+
 export async function listComments(ticketId: string): Promise<Comment[]> {
   return clone(comments[ticketId] ?? []);
 }
@@ -439,6 +447,27 @@ export async function createUser(input: {
     OPERATORS.push({ id: user.id, name: user.name, email: user.email });
   }
   return clone(user);
+}
+
+// Usuários do seed mock, com papel, para a tela de administração.
+function baseUsers(): { id: string; name: string; email: string; role: UserRole }[] {
+  return [
+    { ...U.admin, role: "ADMIN" },
+    { ...U.manager, role: "MANAGER" },
+    { ...U.op1, role: "OPERATOR" },
+    { ...U.op2, role: "OPERATOR" },
+    { ...U.op3, role: "OPERATOR" },
+    { ...U.req1, role: "REQUESTER" },
+    { ...U.req2, role: "REQUESTER" },
+    { ...U.req3, role: "REQUESTER" },
+  ];
+}
+
+export async function listUsers(
+  role?: UserRole,
+): Promise<{ id: string; name: string; email: string; role: UserRole }[]> {
+  const all = [...baseUsers(), ...createdUsers];
+  return clone(role ? all.filter((u) => u.role === role) : all);
 }
 
 export async function listOperators(): Promise<UserMini[]> {

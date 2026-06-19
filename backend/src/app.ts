@@ -21,7 +21,8 @@ export function createApp(): Application {
     }),
   );
   app.use(cors());
-  app.use(express.json({ limit: "2mb" }));
+  // Limite maior: evidências (fotos) chegam como data URL base64 no corpo JSON.
+  app.use(express.json({ limit: "15mb" }));
   app.use(morgan(process.env.NODE_ENV === "test" ? "tiny" : "dev"));
 
   app.use("/health", healthRouter);

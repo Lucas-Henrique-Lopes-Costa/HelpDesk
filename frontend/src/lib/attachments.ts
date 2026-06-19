@@ -1,4 +1,4 @@
-import { apiUpload, api } from "./api";
+import { api } from "./api";
 import { useMock, type UserMini } from "./tickets";
 import * as mock from "./mock-db";
 
@@ -48,8 +48,27 @@ export async function uploadAttachment(
   kind: AttachmentKind,
 ): Promise<Attachment> {
   if (useMock) return mock.uploadAttachment(ticketId, file, kind);
-  const form = new FormData();
-  form.append("file", file);
-  form.append("kind", kind);
-  return apiUpload<Attachment>(`/tickets/${ticketId}/attachments`, form);
+
+  // O backend persiste a URL/conteúdo da evidência (ainda sem upload binário),
+  // então enviamos a imagem como data URL no corpo JSON do POST /attachments.
+  const url = await fileToDataUrl(file);
+  return api<Attachment>(`/tickets/${ticketId}/attachments`, {
+    method: "POST",
+    body: JSON.stringify({
+      url,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      kind,
+    }),
+  });
+}
+
+/** Lê o arquivo como data URL (base64) para enviar embutido no JSON. */
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Falha ao ler o arquivo."));
+    reader.readAsDataURL(file);
+  });
 }

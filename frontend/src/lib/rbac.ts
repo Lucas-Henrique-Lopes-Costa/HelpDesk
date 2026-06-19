@@ -73,6 +73,11 @@ export function canManageUsers(role: UserRole): boolean {
   return role === "ADMIN";
 }
 
+/** Pode excluir um chamado (DELETE /tickets/:id). Somente ADMIN. */
+export function canDeleteTicket(role: UserRole): boolean {
+  return role === "ADMIN";
+}
+
 // ---------------------------------------------------------------------------
 // Máquina de estados — espelha backend/src/utils/ticket-transitions.ts.
 // ---------------------------------------------------------------------------
