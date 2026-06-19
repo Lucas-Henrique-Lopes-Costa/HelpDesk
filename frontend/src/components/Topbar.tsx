@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { canViewInsights, canViewQueue, roleLabel, type UserRole } from "@/lib/rbac";
+import {
+  canManageUsers,
+  canViewInsights,
+  canViewQueue,
+  roleLabel,
+  type UserRole,
+} from "@/lib/rbac";
 
 type NavItem = { href: string; label: string; show: (role: UserRole) => boolean };
 
@@ -11,6 +17,7 @@ const NAV: NavItem[] = [
   { href: "/dashboard", label: "Chamados", show: () => true },
   { href: "/queue", label: "Fila", show: canViewQueue },
   { href: "/insights", label: "Indicadores", show: canViewInsights },
+  { href: "/admin/users", label: "Usuários", show: canManageUsers },
 ];
 
 export function Topbar() {
