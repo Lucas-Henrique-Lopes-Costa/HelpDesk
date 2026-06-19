@@ -17,6 +17,10 @@ export function roleLabel(role: string): string {
 // Grupos de papéis reutilizáveis (referência estável para guards/hooks).
 export const QUEUE_ROLES: UserRole[] = ["OPERATOR", "MANAGER", "ADMIN"];
 export const INSIGHTS_ROLES: UserRole[] = ["MANAGER", "ADMIN"];
+export const ADMIN_ROLES: UserRole[] = ["ADMIN"];
+
+// Papéis que um ADMIN pode atribuir ao criar um usuário.
+export const ASSIGNABLE_ROLES: UserRole[] = ["OPERATOR", "MANAGER", "REQUESTER", "ADMIN"];
 
 // ---------------------------------------------------------------------------
 // Permissões por ação (espelham o RBAC do backend — épicos #29/#30).
@@ -62,6 +66,11 @@ export function canViewQueue(role: UserRole): boolean {
 /** Acessa o dashboard executivo de indicadores. */
 export function canViewInsights(role: UserRole): boolean {
   return role === "MANAGER" || role === "ADMIN";
+}
+
+/** Pode gerir usuários (criar operador/gestor/solicitante). Somente ADMIN. */
+export function canManageUsers(role: UserRole): boolean {
+  return role === "ADMIN";
 }
 
 // ---------------------------------------------------------------------------

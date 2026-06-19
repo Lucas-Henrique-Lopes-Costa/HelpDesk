@@ -4,7 +4,7 @@
 // memória e são reiniciados a cada reload da página.
 
 import { ApiError } from "./api";
-import { VALID_TRANSITIONS } from "./rbac";
+import { VALID_TRANSITIONS, type UserRole } from "./rbac";
 import type {
   CreateTicketInput,
   ListTicketsFilters,
@@ -413,6 +413,32 @@ export async function uploadAttachment(
   };
   (attachments[ticketId] ??= []).push(attachment);
   return clone({ ...attachment, url }); // mantém o objectURL (não serializável via clone)
+}
+
+// Usuários criados em tempo de execução no modo demo (somem ao recarregar).
+const createdUsers: { id: string; name: string; email: string; role: UserRole }[] = [];
+
+function knownEmails(): string[] {
+  return [...Object.values(U).map((u) => u.email), ...createdUsers.map((u) => u.email)];
+}
+
+export async function createUser(input: {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+}): Promise<{ id: string; name: string; email: string; role: UserRole }> {
+  const email = input.email.trim().toLowerCase();
+  if (knownEmails().some((e) => e.toLowerCase() === email)) {
+    throw new ApiError(409, "Já existe um usuário com este e-mail");
+  }
+  const user = { id: nextId("u"), name: input.name.trim(), email, role: input.role };
+  createdUsers.push(user);
+  // Operadores recém-criados passam a aparecer na atribuição de chamados.
+  if (user.role === "OPERATOR") {
+    OPERATORS.push({ id: user.id, name: user.name, email: user.email });
+  }
+  return clone(user);
 }
 
 export async function listOperators(): Promise<UserMini[]> {
